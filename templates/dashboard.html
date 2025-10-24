@@ -1,0 +1,114 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>OTIMIZADORDEROTAS-IA - Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>#map{height:70vh;border-radius:10px;}</style>
+</head>
+<body class="app-dark">
+<nav class="navbar navbar-dark bg-dark">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="#">OTIMIZADORDEROTAS-IA</a>
+    <div class="d-flex align-items-center text-light">
+      <span class="me-3">Usuário: {{ current_user.username }}</span>
+      <a class="btn btn-sm btn-outline-light me-2" href="{{ url_for('export_pdf') }}">Exportar PDF</a>
+      <a class="btn btn-sm btn-outline-danger" href="{{ url_for('logout') }}">Sair</a>
+    </div>
+  </div>
+</nav>
+<div class="container-fluid mt-3">
+  <div class="row">
+    <div class="col-lg-4">
+      <div class="card p-3 mb-3 side-card">
+        <h5>Nova entrega</h5>
+        <form method="post" action="{{ url_for('add_delivery') }}">
+          <input name="address" class="form-control mb-2 form-control-dark" placeholder="Endereço (ex: R. Exemplo, 100)" required>
+          <input name="city" class="form-control mb-2 form-control-dark" placeholder="Cidade (opcional)">
+          <input name="notes" class="form-control mb-2 form-control-dark" placeholder="Notas (opcional)">
+          <button class="btn btn-success w-100">Adicionar</button>
+        </form>
+        <hr class="my-2">
+        <h6>Entregas</h6>
+        <ul class="list-group list-group-flush" id="list-deliveries">
+          {% for d in deliveries %}
+            <li class="list-group-item d-flex justify-content-between align-items-center bg-transparent text-light">
+              <div>
+                <b>#{{ d.id }}</b> {{ d.address }}{% if d.city %}, {{ d.city }}{% endif %}
+                <div><small>{{ d.notes }}</small></div>
+              </div>
+              <div class="btn-group">
+                <a class="btn btn-sm btn-outline-primary" href="{{ url_for('open_waze', id=d.id) }}">Waze</a>
+                <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('open_maps', id=d.id) }}">Maps</a>
+                {% if not d.lat %}
+                  <button class="btn btn-sm btn-outline-info js-geocode" data-id="{{ d.id }}">Geocode</button>
+                {% endif %}
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+        <hr class="my-2">
+        <h6>Otimizar (Mais rápido)</h6>
+        <input id="startLat" class="form-control mb-2 form-control-dark" placeholder="Lat início (ex: 38.7223)">
+        <input id="startLon" class="form-control mb-2 form-control-dark" placeholder="Lon início (ex: -9.1393)">
+        <input id="ids" class="form-control mb-2 form-control-dark" placeholder="IDs separadas por vírgula (ex: 1,2,3)">
+        <button id="btn-opt" class="btn btn-info w-100">Otimizar (Mais rápido)</button>
+        <div id="opt-result" class="mt-2 text-light"></div>
+      </div>
+    </div>
+    <div class="col-lg-8">
+      <div id="map"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  const deliveries = {{ deliveries|tojson }};
+  const gmapsKey = "{{ gmaps_key or '' }}";
+  const map = L.map('map').setView([38.7223, -9.1393], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+  const markers = {};
+  deliveries.forEach(d=>{
+    if (d.lat && d.lon){
+      const m = L.marker([d.lat,d.lon]).addTo(map).bindPopup(`<b>#${d.id}</b><br>${d.address}`);
+      markers[d.id]=m;
+    }
+  });
+
+  document.querySelectorAll('.js-geocode').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = btn.dataset.id;
+      btn.disabled = true; btn.innerText='...';
+      const res = await fetch(`/geocode/${id}`,{method:'POST'});
+      const j = await res.json();
+      if (j.ok) location.reload(); else {alert('Geocode falhou'); location.reload();}
+    });
+  });
+
+  document.getElementById('btn-opt').addEventListener('click', async ()=>{
+    const lat = parseFloat(document.getElementById('startLat').value);
+    const lon = parseFloat(document.getElementById('startLon').value);
+    const ids = document.getElementById('ids').value.split(',').map(x=>x.trim()).filter(x=>x).map(Number);
+    const res = await fetch('/api/optimize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({start:{lat,lon}, ids, priority:'time'})});
+    const j = await res.json();
+    if (j.order) {
+        document.getElementById('opt-result').innerText = 'Ordem: ' + j.order.join(', ');
+        const routeIds = j.order;
+        const routeCoords = routeIds.map(id => {
+            const d = deliveries.find(x=>x.id===id);
+            return d? [d.lat,d.lon]: null;
+        }).filter(x=>x);
+        if (window.currentRoute) map.removeLayer(window.currentRoute);
+        window.currentRoute = L.polyline(routeCoords, {weight:4, color:'#0ea5e9'}).addTo(map);
+        if (routeCoords.length) map.fitBounds(window.currentRoute.getBounds(), {padding:[40,40]});
+    } else {
+        document.getElementById('opt-result').innerText = JSON.stringify(j);
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Nova Entrega</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="form-box">
+    <h2>Adicionar Entrega</h2>
+    <form method="POST">
+        <input type="text" name="endereco" placeholder="Endereço" required>
+        <button type="submit">Salvar</button>
+    </form>
+</div>
+</body>
+</html>

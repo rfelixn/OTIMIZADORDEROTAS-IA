@@ -1,0 +1,18 @@
+:root{
+  --bg:#0f1724;
+  --card: rgba(255,255,255,0.04);
+  --muted:#9aa7b2;
+  --accent:#0ea5e9;
+  --danger:#ef4444;
+}
+body.app-dark{
+  background: var(--bg);
+  color: #e6eef8;
+}
+.login-card{ background: var(--card); border-radius:10px; padding:18px; box-shadow: 0 6px 18px rgba(0,0,0,0.5); }
+.form-control-dark{ background: #0b1220; border:1px solid rgba(255,255,255,0.06); color: #e6eef8; }
+.form-control-dark::placeholder{ color: var(--muted); }
+.side-card{ background: var(--card); border-radius:10px; }
+.btn-primary{ background: var(--accent); border:none; }
+.btn-outline-light{ color:#e6eef8; border:1px solid rgba(255,255,255,0.06); }
+.list-group-item{ border:none; }
