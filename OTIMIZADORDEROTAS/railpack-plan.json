@@ -1,7 +1,0 @@
-{
-  "name": "otimizador_rotas",
-  "region": "us-east4",
-  "runtime": "python",
-  "python": "3.11",
-  "web": "app.py"
-}
