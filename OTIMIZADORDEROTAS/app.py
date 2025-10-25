@@ -5,6 +5,7 @@ import requests
 import itertools
 import io
 from reportlab.pdfgen import canvas
+import os
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'sua_chave_secreta_aqui'
@@ -57,7 +58,6 @@ def logout():
 @login_required
 def dashboard():
     deliveries = db.session.query(Delivery).all()
-    # ⚡ Transformar para JSON simples
     deliveries_json = [
         {"id": d.id, "address": d.address, "city": d.city, "notes": d.notes, "lat": d.lat, "lon": d.lon}
         for d in deliveries
@@ -79,7 +79,7 @@ def nova_entrega():
 @app.route("/geocode/<int:id>", methods=["POST"])
 @login_required
 def geocode(id):
-    d = db.session.get(Delivery, id)  # ✅ SQLAlchemy 2.0
+    d = db.session.get(Delivery, id)
     if not d:
         return jsonify({"ok": False})
     try:
@@ -166,7 +166,7 @@ def export_pdf():
 
 # ---------------------- INICIALIZAÇÃO ----------------------
 if __name__ == "__main__":
-    # Cria o banco se não existir
     with app.app_context():
         db.create_all()
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
